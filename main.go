@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 type Question struct {
@@ -15,30 +16,38 @@ type Question struct {
 	Answer   string `json:"answer"`
 }
 
+const timeLimit = 20
+
 func main() {
 	questions := readFileAndParse("problems.csv")
 	reader := bufio.NewReader(os.Stdin)
 	answersCorrect := 0
-	numOfQuestions := 0
+
+	timer := time.NewTimer(time.Second * timeLimit)
 
 	for _, v := range questions {
-		numOfQuestions = numOfQuestions + 1
-		var answer string
-		fmt.Printf("What is: %s?    ", v.Question)
-		answer, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("There was an error, reading your answer")
+		select {
+		case <-timer.C:
+			fmt.Printf("Quiz finished, you got %v/%v right. \n", answersCorrect, len(questions))
+			return
+		default:
+			var answer string
+			fmt.Printf("What is: %s?    ", v.Question)
+			answer, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Println("There was an error, reading your answer")
+			}
+			sanitizedAnswer := strings.TrimSpace(answer)
+			if strings.Compare(v.Answer, sanitizedAnswer) == 0 {
+				fmt.Println("You are correct.")
+				answersCorrect = answersCorrect + 1
+			} else {
+				fmt.Println("Incorrect.")
+			}
 		}
-		sanitizedAnswer := strings.TrimSpace(answer)
-		if strings.Compare(v.Answer, sanitizedAnswer) == 0 {
-			fmt.Println("You are correct.")
-			answersCorrect = answersCorrect + 1
-		} else {
-			fmt.Println("Incorrect.")
-		}
-	}
 
-	fmt.Printf("Quiz finished, you got %v/%v right. \n", answersCorrect, numOfQuestions)
+	}
+	fmt.Printf("Quiz finished, you got %v/%v right. \n", answersCorrect, len(questions))
 
 }
 
